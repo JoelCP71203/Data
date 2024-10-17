@@ -1,0 +1,88 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+
+# Load the dataset
+column_names = ['Sample code number', 'Clump Thickness', 'Uniformity of Cell Size',
+                'Uniformity of Cell Shape', 'Marginal Adhesion', 'Single Epithelial Cell Size',
+                'Bare Nuclei', 'Bland Chromatin', 'Normal Nucleoli', 'Mitoses', 'Class']
+data_url = "https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/breast-cancer-wisconsin.data"
+df = pd.read_csv(data_url, names=column_names)
+
+# Display first few rows
+print(df.head())
+
+# Display data info
+print(df.info())
+
+# Replace missing values '?' with NaN
+df.replace('?', np.nan, inplace=True)
+
+# Convert Bare Nuclei to numeric type
+df['Bare Nuclei'] = pd.to_numeric(df['Bare Nuclei'])
+
+# Display missing values
+print(df.isnull().sum())
+
+# Fill missing values with the median
+df['Bare Nuclei'].fillna(df['Bare Nuclei'].median(), inplace=True)
+
+# Verify if there are any missing values left
+print(df.isnull().sum())
+
+# Drop the 'Sample code number' column
+df.drop(columns=['Sample code number'], inplace=True)
+
+# Define features and labels
+X = df.drop(columns=['Class'])
+y = df['Class']
+
+# Display basic statistics
+print(df.describe())
+
+
+
+
+# Visualize the distribution of the classes
+sns.countplot(x='Class', data=df)
+plt.title('Distribution of Classes')
+plt.show()
+
+# Pairplot to see relationships between features
+# sns.pairplot(df, hue='Class', diag_kind='kde')
+# plt.show()
+# Correlation heatmap
+plt.figure(figsize=(10, 8))
+sns.heatmap(df.corr(), annot=True, fmt='.2f', cmap='coolwarm')
+plt.title('Correlation Heatmap')
+plt.show()
+
+# Split data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Initialize and train the RandomForestClassifier
+clf = RandomForestClassifier(n_estimators=100, random_state=42)
+clf.fit(X_train, y_train)
+
+# Make predictions
+y_pred = clf.predict(X_test)
+
+# Confusion Matrix
+conf_matrix = confusion_matrix(y_test, y_pred)
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=['Benign', 'Malignant'], yticklabels=['Benign', 'Malignant'])
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
+plt.show()
+
+# Classification Report
+print("Classification Report:")
+print(classification_report(y_test, y_pred, target_names=['Benign', 'Malignant']))
+
+# Accuracy Score
+accuracy = accuracy_score(y_test, y_pred)
+print(f'Accuracy: {accuracy * 100:.2f}%')
