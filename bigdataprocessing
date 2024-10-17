@@ -1,0 +1,116 @@
+!pip install seaborn matplotlib
+
+# Import necessary libraries
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score, mean_squared_error, r2_score
+from sklearn.impute import SimpleImputer
+
+# Load the CSV file containing the dataset
+file_path = '/content/weatherAUS.csv'
+weather_data = pd.read_csv(file_path)
+
+# Filter the data for Perth
+perth_data = weather_data[weather_data['Location'] == 'Perth']
+
+# Drop rows with missing values in the target variable
+perth_data = perth_data.dropna(subset=['Temp9am'])
+
+# Drop unnecessary columns
+perth_data = perth_data.drop(columns=['Date', 'Location', 'RainTomorrow'])
+
+# Handle categorical variables
+categorical_columns = ['WindGustDir', 'WindDir9am', 'WindDir3pm', 'RainToday']
+perth_data = pd.get_dummies(perth_data, columns=categorical_columns, drop_first=True)
+
+# Separate features and target variable
+X = perth_data.drop(columns=['Temp9am'])
+y = perth_data['Temp9am']
+
+# Impute missing values with the mean for numerical columns
+imputer = SimpleImputer(strategy='mean')
+X_imputed = imputer.fit_transform(X)
+
+# Classification: Binarize the target variable (Temp9am > 20)
+y_classification = (y > 20).astype(int)
+
+# Split the data into training and testing sets
+X_train, X_test, y_train_reg, y_test_reg = train_test_split(X_imputed, y, test_size=0.2, random_state=42)
+X_train_class, X_test_class, y_train_class, y_test_class = train_test_split(X_imputed, y_classification, test_size=0.2, random_state=42)
+
+### Regression Task ###
+def regression_task():
+    rf_regressor = RandomForestRegressor(n_estimators=100, random_state=42)
+    rf_regressor.fit(X_train, y_train_reg)
+    y_pred_reg = rf_regressor.predict(X_test)
+    mse = mean_squared_error(y_test_reg, y_pred_reg)
+    r2 = r2_score(y_test_reg, y_pred_reg)
+
+    print("Regression Task:")
+    print(f"Mean Squared Error (MSE): {mse}")
+    print(f"R-squared (R²): {r2}")
+
+    # Plot the actual vs. predicted temperatures
+    plt.figure(figsize=(10, 6))
+    sns.scatterplot(x=y_test_reg, y=y_pred_reg, alpha=0.5)
+    plt.plot([y_test_reg.min(), y_test_reg.max()], [y_test_reg.min(), y_test_reg.max()], 'r--', lw=2)
+    plt.xlabel('Actual Temperature at 9 am')
+    plt.ylabel('Predicted Temperature at 9 am')
+    plt.title('Actual vs. Predicted Temperatures')
+    plt.show()
+
+### Classification Task ###
+def classification_task():
+    # Initialize and train the Random Forest Classifier
+    rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf_classifier.fit(X_train_class, y_train_class)
+
+    # Make predictions on the test set
+    y_pred_class = rf_classifier.predict(X_test_class)
+
+    # Calculate evaluation metrics
+    accuracy = accuracy_score(y_test_class, y_pred_class)
+    precision = precision_score(y_test_class, y_pred_class)
+    recall = recall_score(y_test_class, y_pred_class)
+    f1 = f1_score(y_test_class, y_pred_class)
+
+    print("Classification Task:")
+    print(f"Accuracy: {accuracy}")
+    print(f"Precision: {precision}")
+    print(f"Recall: {recall}")
+    print(f"F1 Score: {f1}")
+
+    # Classification report
+    print("\nClassification Report:")
+    print(classification_report(y_test_class, y_pred_class))
+
+    # Confusion matrix
+    conf_matrix = confusion_matrix(y_test_class, y_pred_class)
+    plt.figure(figsize=(10, 7))
+    sns.heatmap(conf_matrix, annot=True, fmt="d", cmap="Blues", cbar=False, xticklabels=['<=20', '>20'], yticklabels=['<=20', '>20'])
+    plt.xlabel('Predicted')
+    plt.ylabel('Actual')
+    plt.title('Confusion Matrix')
+    plt.show()
+
+def plot_correlation_heatmap():
+    # Select only columns up to Temp3pm for the heatmap
+    selected_columns = perth_data.columns[:perth_data.columns.get_loc('Temp3pm') + 1]
+    correlation_matrix = perth_data[selected_columns].corr()
+
+    # Create a heatmap of the correlations
+    plt.figure(figsize=(16, 12))
+    sns.heatmap(correlation_matrix, annot=True, cmap='YlGnBu', fmt='.2f', linewidths=0.5, annot_kws={"size": 8})
+    plt.title('Feature Correlation Heatmap', fontsize=18)
+    plt.xticks(rotation=45, ha='right', fontsize=20)
+    plt.yticks(rotation=0, fontsize=20)
+    plt.tight_layout()
+    plt.show()
+
+# Execute the tasks
+regression_task()
+classification_task()
+plot_correlation_heatmap()
